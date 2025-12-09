@@ -1,4 +1,32 @@
 use std::collections::BTreeSet;
+use std::ffi::CStr;
+
+fn cstr_from_buf(s: &[i8]) -> &CStr {
+    let s = unsafe { core::slice::from_raw_parts(
+        s.as_ptr() as *const u8,
+        s.len(),
+    ) };
+    return CStr::from_bytes_until_nul(s).unwrap();
+}
+
+fn enumerate_instance_layer_properties() -> BTreeSet<Box<CStr>> {
+    let mut buf = Vec::new();
+    buf.resize(1000, Default::default());
+
+    let mut count = buf.len() as u32;
+    let result = unsafe { vulkant_sys::vkEnumerateInstanceLayerProperties(
+        &mut count,
+        buf.as_mut_ptr(),
+    ) };
+
+    assert_eq!(result, 0);
+    buf.resize(count as usize, Default::default());
+
+    return buf
+        .iter()
+        .map(|x| cstr_from_buf(&x.layerName).into())
+        .collect();
+}
 
 fn enumerate_instance_extension_properties() -> BTreeSet<Box<str>> {
     let mut buf = Vec::new();
@@ -16,13 +44,17 @@ fn enumerate_instance_extension_properties() -> BTreeSet<Box<str>> {
 
     return buf
         .iter()
-        .map(|x| unsafe { std::ffi::CStr::from_ptr(x.extensionName.as_ptr() as *const i8) }.to_str().unwrap().into())
+        .map(|x| cstr_from_buf(&x.extensionName).to_str().unwrap().into())
         .collect();
 }
 
 fn create_instance(glfw_ext: &[String]) -> vulkant::Instance {
     let ext_as_cstr: Vec<String> = glfw_ext.iter().map(|x| x.clone() + "\0").collect();
     let pointer_array: Vec<*const i8> = ext_as_cstr.iter().map(|x| x.as_ptr() as *const i8).collect();
+
+    let layer_pointer_array = [
+        c"VK_LAYER_KHRONOS_validation".as_ptr()
+    ];
 
     let app_info = vulkant_sys::VkApplicationInfo {
         sType: vulkant_sys::VkStructureType_VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -39,20 +71,22 @@ fn create_instance(glfw_ext: &[String]) -> vulkant::Instance {
         pNext: std::ptr::null(),
         flags: 0,
         pApplicationInfo: &app_info,
-        enabledLayerCount: 0,
-        ppEnabledLayerNames: std::ptr::null(),
+        enabledLayerCount: layer_pointer_array.len().try_into().unwrap(),
+        ppEnabledLayerNames: layer_pointer_array.as_ptr(),
         enabledExtensionCount: pointer_array.len().try_into().unwrap(),
         ppEnabledExtensionNames: pointer_array.as_ptr(),
     };
 
     let mut instance = std::ptr::null_mut();
     let result = unsafe { vulkant_sys::vkCreateInstance(
-        &createInfo,
+        &create_info,
         std::ptr::null(),
         &mut instance,
     ) };
 
     assert_eq!(result, 0);
+    assert_ne!(instance, std::ptr::null_mut());
+
     todo!();
 }
 
@@ -70,7 +104,10 @@ fn main() {
         assert!(vk_ext.contains(req.as_str()));
     }
 
-    let instance = create_instance(&glfw_ext);
+    let vk_layers = enumerate_instance_layer_properties();
+    assert!(vk_layers.contains(c"VK_LAYER_KHRONOS_validation"));
+
+    let _instance = create_instance(&glfw_ext);
 
     while !window.should_close() {
         glfw.poll_events();
