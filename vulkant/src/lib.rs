@@ -12,6 +12,19 @@ pub use instance::Instance;
 pub struct UtfCStr(core::ffi::CStr);
 
 #[repr(transparent)]
+pub struct Device<'phys> {
+    handle: NonNull<vulkant_sys::VkDevice_T>,
+    phantom: PhantomData<&'phys ()>,
+}
+
+impl Drop for Device<'_> {
+    fn drop(&mut self) {
+        let vk_allocator = core::ptr::null();
+        unsafe { vulkant_sys::vkDestroyDevice(self.handle.as_ptr(), vk_allocator) }
+    }
+}
+
+#[repr(transparent)]
 pub struct PhysicalDevice<'instance> {
     handle: NonNull<vulkant_sys::VkPhysicalDevice_T>,
     phantom: PhantomData<&'instance Instance>,
@@ -62,6 +75,24 @@ pub struct Properties {
 impl PhysicalDevice<'_> {
     pub fn id(&self) -> usize {
         self.handle.addr().get()
+    }
+
+    pub fn create_logical<'phys>(&'phys self, info: &vulkant_sys::VkDeviceCreateInfo) -> Device<'phys> {
+        let vk_allocator = core::ptr::null();
+
+        let mut handle = core::ptr::null_mut();
+        let result = unsafe { vulkant_sys::vkCreateDevice(
+            self.handle.as_ptr(),
+            info,
+            vk_allocator,
+            &mut handle,
+        ) };
+
+        assert_eq!(result, 0);
+        return Device {
+            handle: NonNull::new(handle).unwrap(),
+            phantom: PhantomData,
+        };
     }
 
     pub fn get_queue_family_properties(&self) -> Vec<vulkant_sys::VkQueueFamilyProperties> {

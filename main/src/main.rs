@@ -111,6 +111,10 @@ fn main() {
     println!("{:#?}", queues);
     assert!((queues[0].queueFlags & 1) != 0);
 
+    let mut device_create_info = vulkant_sys::VkDeviceCreateInfo::default();
+    device_create_info.sType = vulkant_sys::VkStructureType_VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    let actual_device = device.create_logical(&device_create_info);
+
     // while !window.should_close() {
     //     glfw.poll_events();
     // }
