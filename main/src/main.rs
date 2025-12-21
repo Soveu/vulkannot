@@ -102,9 +102,9 @@ fn main() {
 
     let device = &devices[0];
     let device_prop = device.get_properties();
-    assert_eq!(device_prop.2.conformanceVersion.major, 1);
-    assert_eq!(device_prop.2.conformanceVersion.minor, 4);
-    assert_ne!(device_prop.0.properties.limits.maxGeometryShaderInvocations, 0); // check for geometry shader
+    assert_eq!(device_prop.conformance_version.major, 1);
+    assert_eq!(device_prop.conformance_version.minor, 4);
+    assert!(device_prop.has_geometry_shader);
     println!("{:#?}", device_prop);
 
     // while !window.should_close() {
