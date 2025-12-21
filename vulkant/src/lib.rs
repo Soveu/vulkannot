@@ -64,6 +64,21 @@ impl PhysicalDevice<'_> {
         self.handle.addr().get()
     }
 
+    pub fn get_queue_family_properties(&self) -> Vec<vulkant_sys::VkQueueFamilyProperties> {
+        let mut buf = Vec::new();
+        buf.resize(1000, Default::default());
+
+        let mut count = buf.len() as u32;
+        unsafe { vulkant_sys::vkGetPhysicalDeviceQueueFamilyProperties(
+            self.handle.as_ptr(),
+            &mut count,
+            buf.as_mut_ptr(),
+        ) };
+
+        buf.resize(count as usize, Default::default());
+        return buf;
+    }
+
     pub fn get_properties(&self) -> Properties {
         let mut properties = CombinedProperties::default();
         properties.0.sType = vulkant_sys::VkStructureType_VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;

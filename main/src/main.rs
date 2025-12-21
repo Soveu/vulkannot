@@ -107,6 +107,10 @@ fn main() {
     assert!(device_prop.has_geometry_shader);
     println!("{:#?}", device_prop);
 
+    let queues = device.get_queue_family_properties();
+    println!("{:#?}", queues);
+    assert!((queues[0].queueFlags & 1) != 0);
+
     // while !window.should_close() {
     //     glfw.poll_events();
     // }
